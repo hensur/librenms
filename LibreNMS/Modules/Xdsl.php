@@ -135,22 +135,26 @@ class Xdsl implements Module
         $adsl = \SnmpQuery::hideMib()->walk('ADSL-LINE-MIB::adslMibObjects')->table(1);
         $adslPorts = new Collection;
 
+        $use10th = true;
         if (isset($adsl[0])) {
             // workaround vigor 167 dsl ifindex
             $port = (int) $os->getDevice()->ports()->where('ifName', "ptm0")->value('ifIndex');
             $adsl[$port] = $adsl[0];
             unset($adsl[0]);
+            $use10th = false;
         }
 
         foreach ($adsl as $ifIndex => $data) {
             // Values are 1/10
-            foreach ($this->adslTenthValues as $oid) {
-                if (isset($data[$oid])) {
-                    if ($oid == 'adslAtucCurrOutputPwr') {
-                        // workaround Cisco Bug CSCvj53634
-                        $data[$oid] = Number::constrainInteger($data[$oid], IntegerType::int32);
+            if ($use10th) {
+                foreach ($this->adslTenthValues as $oid) {
+                    if (isset($data[$oid])) {
+                        if ($oid == 'adslAtucCurrOutputPwr') {
+                            // workaround Cisco Bug CSCvj53634
+                            $data[$oid] = Number::constrainInteger($data[$oid], IntegerType::int32);
+                        }
+                        $data[$oid] = $data[$oid] / 10;
                     }
-                    $data[$oid] = $data[$oid] / 10;
                 }
             }
 
